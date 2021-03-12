@@ -7,7 +7,6 @@ import sveltePreprocess from 'svelte-preprocess';
 import typescript from '@rollup/plugin-typescript';
 import css from 'rollup-plugin-css-only';
 import copy from 'rollup-plugin-copy';
-import dayjs from 'dayjs';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -45,13 +44,24 @@ export default {
 			preprocess: sveltePreprocess({ sourceMap: !production }),
 			compilerOptions: {
 				// enable run-time checks when not in production
-				dev: !production,
-				hydratable: true
-			},
+				dev: !production
+			}
 		}),
 		// we'll extract any component CSS out into
 		// a separate file - better for performance
 		css({ output: 'bundle.css' }),
+
+		// copy({
+        //     targets: [{ 
+        //         src: 'node_modules/bootstrap/dist/css/bootstrap.css', 
+        //         dest: 'public/vendor/bootstrap' 
+		// 	},
+		// 	{ 
+        //         src: 'node_modules/bootstrap/dist/css/bootstrap.css.map', 
+        //         dest: 'public/vendor/bootstrap' 
+        //     }]
+        // }),
+
 		// If you have external dependencies installed from
 		// npm, you'll most likely need these plugins. In
 		// some cases you'll need additional configuration -
