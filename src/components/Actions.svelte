@@ -10,20 +10,33 @@
 
 <button title=" { title } " on:click|preventDefault={() => {
     dispatch('executeAction', action)
-}}>
+}}  >
     <i class=" { faIcon } "></i>
+    <span> { title } </span>
 </button>
 
-<style>
+<style type="text/scss">
     button {
-        border: 1px solid #fbfcfc;
         border-radius: 12px;
+        border: none;
         padding: 14px 20px 14px 20px;
-        background-color: #c5cdd6;
-        opacity: 0.6;
-        color: #000;
+        color: #899bb4;
+		background-color: #fff;
         cursor: pointer;
         font-size: 1.5em;
+        width: 100%;
+
+        box-shadow: 0 10px 40px -10px rgba(0, 64, 128, 0.2);
+
+        span {
+            margin-left: 8px;
+        }
+
+        &:hover {
+            color: #a9bdd3;
+			background-color: #f5fcff;
+		    cursor: pointer;
+        }
     }
 
     @media (max-width: 600px) {
