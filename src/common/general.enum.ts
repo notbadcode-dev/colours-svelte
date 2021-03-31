@@ -3,8 +3,9 @@ export enum EViews {
     generalCollection = 10,
     famousCollection = 11,
     likesCollection = 13,
-    editPalette = 20,
-    createPalette = 21,
+    viewPalette = 20,
+    editPalette = 21,
+    createPalette = 22,
     about = 99,
 }
 

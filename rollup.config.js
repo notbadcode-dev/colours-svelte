@@ -3,11 +3,12 @@ import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import { terser } from 'rollup-plugin-terser';
-import sveltePreprocess from 'svelte-preprocess';
+import replace from '@rollup/plugin-replace';
 import typescript from '@rollup/plugin-typescript';
 import css from 'rollup-plugin-css-only';
-import copy from 'rollup-plugin-copy';
-import dayjs from 'dayjs';
+
+import sveltePreprocess from 'svelte-preprocess';
+import config from './config';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -48,6 +49,17 @@ export default {
 				dev: !production,
 				hydratable: true
 			},
+		}),
+		replace({
+			preventAssignment: true,
+			'__myapp': JSON.stringify({
+			  env: {
+				isProd: production,
+				API_URL: production ? config.ENV.PROD.API_URL : config.ENV.DEV.API_URL,
+				AUTH_TOKEN: ''
+			  }
+			}),
+			'__buildDate__': () => JSON.stringify(new Date()),
 		}),
 		// we'll extract any component CSS out into
 		// a separate file - better for performance

@@ -1,12 +1,18 @@
 <script lang="ts">
+	import { createEventDispatcher, onMount } from 'svelte';
+
+    import Actions from '../components/Actions.svelte';
+    import Clipboard from '../components/Clipboard.svelte';
+    import ToastComponent from './Toast.svelte';
+    import TooltipComponent from './Tooltip.svelte';
+
     import { EViews } from '../common/general.enum';
+    import type { Palette } from '../clases/palette.class';
 
-    import { createEventDispatcher } from 'svelte';
-	import Actions from '../components/Actions.svelte';
-
-    export let palette: any = {};
-    export let activeView: EViews = EViews.editPalette;
-
+    export let palette: Palette = {
+			_id: null, colours: []
+	};
+    export let activeView: EViews = EViews.viewPalette;
     const dispatch = createEventDispatcher();
 
     const changeColor = (e) => {
@@ -17,38 +23,100 @@
     function selectedColor(indexColor: number) {
         document.getElementById('colorpicker' + indexColor).click();
     }
+
+	function copy(colourCode) {
+        let clipboard = colourCode.toUpperCase();
+		const app = new Clipboard({
+			target: document.getElementById('clipboard'),
+			props: { clipboard },
+		});
+		app.$destroy();
+        globalThis.pushToast('Copy colour on clipboard');
+	}
+
+    function generateRanndomColours(numberColours: number): string[] {
+        if (numberColours <= 0) {
+            return [];
+        } else {
+            if (numberColours > 1) {
+                const colours: string[] = [];
+                for (let index = 0; index < numberColours; index++) {
+                    colours.push(`#${Math.floor(Math.random()*16777215).toString(16).trim()}`);
+                }
+                return colours;
+            }
+        }
+    }
+
+    function getBottomTooltip(index: number): number {
+        switch (index) {
+            case 0:
+                return 14;
+            case 1:
+                return 24;
+            case 2:
+                return 38;
+            case 3:
+                return  94;    
+            default:
+                return 100;
+                break;
+        }
+    }
+
+    onMount(async () => {
+        if (activeView === EViews.createPalette) {
+            palette['colours'] = generateRanndomColours(4);
+        }
+    })
  
 </script>
 
 <div class="main">
 
     <h1>
-        {#if activeView === EViews.createPalette}
-            Create palette mode
+        {#if activeView === EViews.viewPalette}
+            Detail Palette
+            {:else if activeView === EViews.createPalette}
+            Add palette to collection
             {:else if activeView === EViews.editPalette}
-            Edit palette mode
+            Edit Palette
         {/if}
     </h1>
 
     <div class="item" style="animation-delay: 40ms;">
 
         <div class="palette">
-            {#each palette.colours as colour, i}
-            <div class="colour c{ 5 - (i + 1) }" style="background: { colour } ;">
-                
-                <input type="color" id="{ 'colorpicker' + i }" 
-                    on:input|preventDefault="{ changeColor }">
+            {#if palette}
+                {#each palette.colours as colour, i}
+                <div class="colour c{ 5 - (i + 1) }" style="background: { colour } ;">
+                    
+                    <TooltipComponent
+                        tip="Switch color"
+                        beforeBottom={ getBottomTooltip(i) }
+                        afterBottom={ getBottomTooltip(i) }
+                        afterLeft=7>
+                        <input type="color" id="{ 'colorpicker' + i }" 
+                            on:input|preventDefault="{ changeColor }">
+                    </TooltipComponent>
 
-                <div class="colorpicker">
-                    <button on:click|preventDefault="{() => { selectedColor(i) }}" title="Switch colour">
-                        <i class="fas fa-palette"></i>
-                    </button>
+                    <div class="colorpicker">
+                        <button on:click|preventDefault="{() => { selectedColor(i) }}" title="Switch colour">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                    </div>
+
+                    <TooltipComponent
+                        tip="Copy color on clipboard"
+                        beforeBottom={ getBottomTooltip(i) }
+                        afterBottom={ getBottomTooltip(i) }
+                        afterLeft=32>
+                        <div class="colour-code" role="button" on:click|preventDefault="{() => { copy(colour) }}"> { colour }  </div>
+                    </TooltipComponent>
+
                 </div>
-
-                <div class="colour-code"> { colour }  </div>
-
-            </div>
-            {/each}
+                {/each}
+            {/if}
         </div>
     
     </div>
@@ -56,20 +124,26 @@
     <div class="actions">
         {#if activeView === EViews.createPalette}
             <Actions
-                title={ 'Create' }
+                title='Add'
+                tooltip='Add palette to colecction'
                 faIcon={ 'fas fa-plus-circle' }
-                action=" { 'save' } "
-                on:executeAction={ (e) => dispatch('savePalette', palette) }
+                action=" { 'add' } "
+                on:executeAction={ (e) => dispatch('addPalette', palette) }
             />
             {:else if activeView === EViews.editPalette}
             <Actions
-                title={ 'Save' }
+                title={ 'Update' }
+                tooltip='Update palette'
                 faIcon={ 'fas fa-save' }
                 action=" { 'restore' } "
                 on:executeAction={ (e) => dispatch('updatePalette', palette) }
             />
         {/if}
     </div>
+
+    <div id="clipboard" hidden></div>
+
+    <ToastComponent />
 
 </div>
 
@@ -80,6 +154,7 @@
         max-width: 1200px;
         margin: 0 auto;
         display: list-item;
+        list-style: none;
 
         h1 {
             color: #899bb4;
@@ -127,6 +202,10 @@
                     animation-name: colour;
                     transform-origin: top;
 
+                    // TooltipComponent {
+                    //     left: 300px;
+                    // }
+
                     input[type=color] {
                         position: relative;
                         right: 62px;
@@ -171,8 +250,7 @@
                         max-height: 22px;
                         text-align: center;
                         opacity: 0.5;
-                        color: #000;
-                        padding-top: 2px;
+                        cursor: pointer;
                     }
 
                     &.c1 {
@@ -256,6 +334,28 @@
             width: 320px;
         }
     }
+
+    @media (hover: hover) {
+        .main {
+            .item {
+                .palette {
+                    .colour {
+                        .color-picker {
+                            button:hover {
+                                color: #a9bdd3;
+                                background-color: #f5fcff;
+                            }
+                        }
+
+                        .colour-code:hover {
+                            color: #a9bdd3;
+                            background-color: #f5fcff;
+                        }
+                    }
+                }
+            }
+        }
+	}
 
     @keyframes main-title {
         0% { opacity: 0; }

@@ -1,49 +1,49 @@
 <script lang="ts">
-	import type { Palette } from './clases/palette.class';
-	import { EViews } from './common/general.enum';
+	import { onMount } from 'svelte';
 
 	import CollectionComponent from './components/Collection.svelte';
 	import PaletteComponent from './components/Palette.svelte';
 	import AboutComponent from './components/About.svelte';
 
 	import ToastComponent from './components/Toast.svelte';
+	import TooltipComponent from './components/Tooltip.svelte';
 
 	import { clickOutside } from './functions/clickOutside.js';
 
-	export let activePalette: Palette = {
-        id: null, number: 3, title: 'One', colours: ['#15192f', '#b11e31', '#faf2d1', '#096344'], likes: 88, since: new Date('2021-02-18'), tags: ['#red', '#blue', '#green', '#black'] 
-	};
+	import * as appAuthService from './services/app-auth.http.service';
+	import * as localStorageService from './services/localStorage.service';
+	import * as paletteService from './services/pallete.http.service'
 
+	import type { Palette } from './clases/palette.class';
+	import { EViews } from './common/general.enum';
+	import type { Response } from './clases/reponse.class';
+	
+	export let activePalette: Palette = null;
 	export let activeView: EViews = EViews.generalCollection;
 
-	export let collection: Palette[] = [
-        { id: null, number: 2, title: 'Black', colours: ['#000', '#515151', '#727272', '#fff'], likes: 100, since: new Date('2018-02-19'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 3, title: 'One', colours: ['#15192f', '#b11e31', '#faf2d1', '#096344'], likes: 88, since: new Date('2017-02-18'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 4, title: 'Two', colours: ['#fb6c6d', '#1e86ff', '#3b4351', '#ffffff'], likes: 999, since: new Date('2016-01-19'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 5, title: 'Fantasy', colours: ['#3959a2', '#e8e8e8', '#16181e', '#ffffff'], likes:2, since: new Date('2015-05-20'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 6, title: 'Three', colours: ['#4faa84', '#d3ede8', '#3c7168', '#f9f9fa'], likes: 230, since: new Date('2019-02-19'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 7, title: 'Gradient', colours: ['#0e8ff7', '#32e2f1', '#d8fecd', '#727272'], likes: 128, since: new Date('2021-02-01'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 8, title: 'Four', colours: ['#7ccfe3', '#aaeae8', '#c3f1f0', '#faf7ed'], likes: 752, since: new Date('2014-02-15'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 9, title: 'Five', colours: ['#ef8154', '#fcf6f0', '#ffd586', '#f6c15d'], likes: 987, since: new Date('2020-02-19'), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 10, title: 'Six', colours: ['#3c3c42', '#98cf66', '#f5f9e2', '#dfdecb'], likes: 133, since: new Date(), tags: ['#red', '#blue', '#green', '#black'] },
-        { id: null, number: 11, title: 'Red Velvet', colours: ['#d12a48', '#ed4c64', '#fbeee8', '#f4d5c4'], likes: 657, since: new Date(),tags: ['#red', '#blue', '#green', '#black'] },
-		{ id: null, number: 12, title: 'Sweet', colours: ['#ffd273', '#fee686', '#fec5e6', '#deb5d7'], likes: 444, since: new Date(), tags: ['#red', '#blue', '#green', '#black'] },
-		{ id: null, number: 12, title: 'Sweet Alternative', colours: ['#faa999', '#fea111', '#fec532', '#deb666'], likes: 258, since: new Date(), tags: ['#red', '#blue', '#green', '#black'] },
-	];
+	export let collection: Palette[] = [];
 
 	export let dropdownNavDisplay: boolean = false;
 	export let dropdownDisplay: boolean = false;
 	
 	$: _collection = collection;
+	$:_reloadCollection = false;
 
-	function savePalette(paletteToSave: any): void {
+    onMount(async () => {
+		if (localStorageService.getWithExpiry('token') === null) {
+			const res = await appAuthService.getToken();
+			localStorageService.setWithExpiry('token', res.token, 86400);
+		}
+    })
+
+	function addPalette(paletteToSave: any): void {
 		try {
 			if (paletteToSave.colours.length !== new Set(paletteToSave.colours).size) {
 				globalThis.pushToast('Duplicate colors on palette');
 			} else if (collection.filter(palette => palette.colours === paletteToSave.colours).length > 1) {
 				globalThis.pushToast('Already exists palette with same title or colours');
 			} else {
-				if (paletteToSave.number === null) {
+				if (paletteToSave._id === null) {
 					createPalette(paletteToSave);
 				} else {
 					updatePalette(paletteToSave);
@@ -56,18 +56,24 @@
 
 	function createPalette(paletteToCreate): void {
 		try {
-			collection = [...collection, paletteToCreate];
-			switchView(EViews.generalCollection);
-			globalThis.pushToast('Create palette succesfully');
+			paletteService.createPalette(paletteToCreate).then((response: Response) => {
+				if (response.data) {
+					collection = [...collection, paletteToCreate];
+					switchView(EViews.generalCollection);
+					
+
+					globalThis.pushToast(response.messages[1]);
+				}
+			});
 		} catch (error) {
 			globalThis.pushToast(error);
 		}
 	}
 
-	function updatePalette(paletteToUpdate): void {
+	function updatePalette(paletteToUpdate: Palette): void {
 		try {
 			for (const palette of collection) {
-				if (palette.number === paletteToUpdate.number) {
+				if (palette._id === paletteToUpdate._id) {
 					palette.colours = paletteToUpdate.colours;
 				}
 			}
@@ -93,32 +99,36 @@
 	function moveToCreatePalette(): void {
 		try {
 			activePalette = {
-				id: null, number: 12, title: 'Sweet', colours: ['#ffd273', '#fee686', '#fec5e6', '#deb5d7'], tags: ['#red', '#blue', '#green', '#black']
-			};
+				_id: null,
+				colours: ['#fff', '#fff', '#fff', '#fff']
+			}
 			switchView(EViews.createPalette)
 		} catch (error) {
 			globalThis.pushToast(error);
 		}
 	}
 
-	function moveToEditPalette(paletteToEdit): void {
+	function moveToDetailPalette(paletteToDetail): void {
 		try {
-			activePalette = paletteToEdit;
-			switchView(EViews.editPalette);
+			activePalette = paletteToDetail;
+			switchView(EViews.viewPalette);
 		} catch (error) {
 			globalThis.pushToast(error);
 		}
 	}
 
-	function likedPalette(likedPalette): void {
-		console.log(likedPalette);
+	function reloadCollection() {
+		_reloadCollection = true;
+		setTimeout(() => {
+			_reloadCollection = false;
+		}, 300);
 	}
 
 	function switchView(newView: EViews): void {
 		if (activeView !== newView) {
 			setTimeout(() => {
 				activeView = newView;
-			}, 200);
+			}, 300);
 		}
 		fakeClick();
 	}
@@ -154,12 +164,6 @@
 				<div id="dropdown-nav">
 					<div id="dropdown-menu-nav" style="display: { dropdownNavDisplay ? 'block' : 'none' };"
 						use:clickOutside on:click_outside={ () => { dropdownNavDisplay = false } }>
-						<button
-							on:click|preventDefault={() => { moveToCreatePalette() }}
-							title="Add new palette"
-							disabled={ activeView === EViews.createPalette}>
-							New!
-						</button>
 						<button
 							on:click|preventDefault={() => { switchView(EViews.generalCollection) }}
 							title="View all palettes"
@@ -203,41 +207,54 @@
 	{#if activeView === EViews.about}
 		<AboutComponent />
 
-		{:else if activeView === EViews.createPalette || activeView === EViews.editPalette}
+		{:else if activeView === EViews.createPalette || activeView === EViews.editPalette || activeView === EViews.viewPalette}
 			<PaletteComponent
-				palette={ activePalette }
 				activeView={  activeView }
+				palette={activePalette}
 				on:updatePalette={ (e) => { updatePalette(e.detail) }}
-				on:savePalette={ (e) => { savePalette(e.detail) }}
+				on:addPalette={ (e) => { addPalette(e.detail) }}
 				on:removePalette={ (e) => { removePalette(e.detail) }}
 			/>
 
-		{:else if activeView === EViews.generalCollection}
+		{:else if activeView === EViews.generalCollection && !_reloadCollection}
 			<CollectionComponent
-				collection={ _collection }
 				activeView={  activeView }
-				on:likedPalette={e => likedPalette(e.detail)}
-				on:editPalette={ e => moveToEditPalette(e.detail) }
+				on:detailPalette={ e => moveToDetailPalette(e.detail) }
 			/>
 
-		{:else if activeView === EViews.famousCollection}
+		{:else if activeView === EViews.famousCollection && !_reloadCollection}
 			<CollectionComponent
-				collection={ _collection }
 				activeView={  activeView }
-				on:likedPalette={e => likedPalette(e.detail)}
-				on:editPalette={ e => moveToEditPalette(e.detail) }
+				on:detailPalette={ e => moveToDetailPalette(e.detail) }
 			/>
 	
-		{:else if activeView === EViews.likesCollection}
+		{:else if activeView === EViews.likesCollection && !_reloadCollection}
 			<CollectionComponent
-				collection={ _collection }
 				activeView={  activeView }
-				on:likedPalette={e => likedPalette(e.detail)}
-				on:editPalette={ e => moveToEditPalette(e.detail) }
+				on:detailPalette={ e => moveToDetailPalette(e.detail) }
 			/>
 
 	{/if}
 
+</div>
+
+<div class="float">
+	<TooltipComponent tip="Reload collections"
+		hidden={ activeView !== EViews.generalCollection && activeView !== EViews.famousCollection && activeView !== EViews.likesCollection }>
+		<button class="btn-float"
+			on:click|preventDefault={() => { reloadCollection() }}
+			disabled='{ activeView !== EViews.generalCollection && activeView !== EViews.famousCollection && activeView !== EViews.likesCollection }'>
+			<i class="fas fa-sync"></i>
+		</button>
+	</TooltipComponent>
+	<TooltipComponent tip="Add new palette" left
+		hidden={ activeView === EViews.createPalette || activeView === EViews.about }>
+		<button class="btn-float"
+			on:click|preventDefault={() => { moveToCreatePalette() }}
+			disabled='{ activeView === EViews.createPalette || activeView === EViews.about }'>
+			<i class="fas fa-plus"></i>
+		</button>
+	</TooltipComponent>
 </div>
 
 <ToastComponent />
@@ -413,6 +430,36 @@
 		margin: 64px 0 32px 0;
 	}
 
+	.float{
+		position:fixed;
+		bottom: 30px;
+		right: 30px;
+		display: inline-grid;
+
+		.btn-float {
+			width: 60px;
+			height: 60px;
+			color: #ff3e00;
+			background-color: #fff;
+			border-radius: 50px;
+			border-color: rgba(0, 64, 128, 0.2);
+			text-align: center;
+			box-shadow: 0 10px 40px -10px rgba(0, 64, 128, 0.2);
+			cursor: pointer;
+
+			&:not(:last-child) {
+				margin-bottom: 32px;
+			}
+
+
+			&:disabled {
+				opacity: 0.3;
+				color: #899bb4;
+				cursor: initial;
+			}
+		}
+	}
+
 	@keyframes drop {
     0% {
         transform: scaleY(.5);
@@ -468,7 +515,7 @@
 				span {
 					&.title {
 						margin: 0 8px;
-						font-size: 12px;
+						font-size: 20px;
 					}
 
 					&.breadcum {
@@ -512,5 +559,16 @@
 			}
 		}
     }
+
+	@media (hover: hover) {
+		.float {
+			.btn-float:not(:disabled) {
+				&:hover {
+					color: #a9bdd3;
+					background-color: #f5fcff;
+				}
+			}
+		}
+	}
 
 </style>

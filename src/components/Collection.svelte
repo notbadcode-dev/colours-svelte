@@ -1,68 +1,126 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     import { getSinceFromDate } from '../functions/days';
+
+    import * as paletteService from '../services/pallete.http.service';
+    import * as localStorageService from '../services/localStorage.service';
+    import * as globalService from '../common/app-global.service';
 
     import type { Palette } from '../clases/palette.class';
     import { EViews } from '../common/general.enum';
+    import type { Response } from '../clases/reponse.class';
 
-    export let collection: Palette[] = [];
-	export let activeView: EViews = EViews.generalCollection;
+    export let activeView: EViews = EViews.generalCollection;
+
+    $: _collection = [];
 
     const dispatch = createEventDispatcher();
 
+    async function loadCollection() {
+        let response: Response;
+        let palettes: Palette[] = [];
+
+        _collection = [];
+        if (EViews.generalCollection === activeView
+            || EViews.likesCollection === activeView) {
+            response = await paletteService.getPalleteList();
+        } else if (EViews.famousCollection === activeView) {
+            response = await paletteService.getFamousPalleteList();
+        }
+
+        palettes = globalService.getResponse(response);
+        if (palettes && palettes.length > 0) {
+            for (let i = 0, palettesLength = palettes.length; i < palettesLength; i++) {
+                const palette = palettes[i];
+                palette.liked = isLikedPalette(palette._id);
+            }
+
+            if (EViews.likesCollection === activeView) {
+                palettes = palettes.filter(res => res.liked === true);
+            }
+        }
+
+        return palettes;
+    }
+
     function _getSinceFromDate(date: Date) {
-        console.log(getSinceFromDate(date));
         return getSinceFromDate(date);
     }
+
+    async function likePalette(likePalette: Palette) {
+        let response: Response;
+        let palettes: Palette[] = [];
+
+        if (isLikedPalette(likePalette._id) && !(likePalette.likes <= 0)) {
+            response =  await paletteService.substractLikedPalette(likePalette._id);
+            palettes = globalService.getResponse(response);
+
+            if (palettes.length > 0) {
+                localStorageService.remove(palettes[0]._id);
+            }
+        } else {
+            response = await paletteService.addLikedPalette(likePalette._id);
+            palettes = globalService.getResponse(response);
+
+            if (palettes.length > 0) {
+                localStorageService.set(palettes[0]._id, palettes[0]._id);
+            }
+        }
+
+        const paletteIndex = _collection.findIndex(palette => palette._id === palettes[0]._id);
+        _collection[paletteIndex] = palettes[0];
+    }
+
+    function isLikedPalette(_id) {
+        return localStorageService.get(_id) !== null;
+    }
+
+    onMount(async () => {
+        _collection = await loadCollection();
+    })
+
 </script>
-
-
-<div> { activeView } </div>
 
 <div class="feed">
 
-    {#each collection as palette, i}
-    <div class="item" style="animation-delay: { (i + 1) * 40 }ms;">
-    
-        {#if activeView === EViews.famousCollection}
-            <div class="title">
-                <span> { palette.title } </span>
+    {#if _collection && _collection.length > 0}
+        {#each _collection as palette, i}
+        <div class="item" style="animation-delay: { (i + 1) * 40 }ms;">
+        
+            <div class="palette" on:click|preventDefault={() => {
+                    dispatch('detailPalette', palette)
+                }}>
+                {#each palette.colours.reverse() as colour, j}
+                    <div class="colour c{ 5 - (j + 1) }" style="background: { colour } ;"></div>
+                {/each}
             </div>
-        {/if}
 
-        <div class="palette" on:click|preventDefault={() => {
-                dispatch('editPalette', palette)
-            }}>
-            {#each palette.colours.reverse() as colour, j}
-                <div class="colour c{ 5 - (j + 1) }" style="background: { colour } ;"></div>
-            {/each}
+            <div class="footer">
+                {#if activeView === EViews.famousCollection}
+                    <div class="title">
+                        <span> { palette.title } </span>
+                    </div>
+
+                    {:else}
+                    <button id="{ palette._id }"
+                        class:liked="{ isLikedPalette(palette._id) }"
+                        on:click={ () => {likePalette(palette) }}>
+                        <i class="far fa-thumbs-up"></i>
+                        <span class="likes"> { palette.likes } </span>
+                    </button>
+        
+                    <span class="since"> { _getSinceFromDate(palette.createdAt) } </span>
+                {/if}
+                
+            </div>
+
         </div>
-
-        <div class="footer">
-            <button on:click|preventDefault={() => {
-                dispatch('likedPalette', palette)
-            }}>
-                <i class="fas fa-heart"></i>
-                <span class="likes"> { palette.likes } </span>
-            </button>
-
-            <span class="since"> { _getSinceFromDate(palette.since) } </span>
-        </div>
-
-        <!-- <div class="collection-tags">
-            {#each palette.tags as tag, i}
-                <span class="tag" style="animation-delay: .{ (i + 1) }s"> { tag } </span>
-            {/each}
-        </div> -->
-
-    </div>
-    {/each}
-
+        {/each}
+    {/if}
 </div>
 
 <style type="text/scss">
     .feed {
-        text-align: center;
         letter-spacing: 1px;
         max-width: 1200px;
         margin: 0 auto;
@@ -74,13 +132,11 @@
             padding: 15px;
             box-sizing: border-box;
             position: relative;
-            animation-name: item;
-            animation-duration: .4s;
             display: inline-block;
             text-align: left;
 
             animation-name: item;
-            animation-duration: .4s;
+            animation-duration: .2s;
             animation-fill-mode: backwards;
 
             box-shadow: 0 10px 40px -10px rgba(0, 64, 128, 0.2);
@@ -154,7 +210,7 @@
                     }
                 }
             }
-        
+
             .footer {
                 display: flex;
                 justify-content: space-between;
@@ -181,7 +237,12 @@
                         cursor: pointer;
                         background-color: #e9f2f9;
                         color: #899bb4;
-                        //opacity: 0.8;
+                    }
+
+                    &.liked {
+                        cursor: pointer;
+                        background-color: #d2dfeb;
+                        color: #4c82af;
                     }
 
                     i {
@@ -297,6 +358,18 @@
             }
         }
     }
+
+    @media (hover: hover) and (pointer: fine) {
+		.item {
+            .footer {
+                button:hover {
+                    cursor: pointer;
+                    background-color: #e9f2f9;
+                    color: #899bb4;
+                }
+            }
+		}
+	}
 
     // @media (min-width: 320px) {
     //     .feed { grid-template-columns: repeat(2, 1fr); }

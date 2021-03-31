@@ -1,21 +1,46 @@
 <script>
     import { createEventDispatcher } from 'svelte';
 
+    import TooltipComponent from './Tooltip.svelte';
+
     export let faIcon = '';
     export let title = '';
+    export let tooltip = ''
     export let action = '';
 
     const dispatch = createEventDispatcher();
 </script>
 
-<button title=" { title } " on:click|preventDefault={() => {
-    dispatch('executeAction', action)
-}}  >
-    <i class=" { faIcon } "></i>
-    <span> { title } </span>
-</button>
+<div class="btn-container">
+    <TooltipComponent tip={ tooltip } bottom
+        beforeWidth=120
+        beforeBottom=36
+        afterBottom=36>
+        <div class="tooltip" on:click|preventDefault={() => { document.getElementById(title + faIcon).click() }}></div>
+    </TooltipComponent>
+
+    <button id="{ title + faIcon }" on:click|preventDefault={() => { dispatch('executeAction', action) }}  >
+        <i class=" { faIcon } "></i>
+        <span> { title } </span>
+    </button>
+</div>
 
 <style type="text/scss">
+
+    .btn-container {
+        display: contents;
+        .tooltip {
+            position: absolute;
+            width: 16.6%;
+            height: 56px;
+            cursor: pointer;
+        }
+
+        button {
+            width: 100%;
+        }
+    }
+
     button {
         border-radius: 12px;
         border: none;
@@ -35,7 +60,6 @@
         &:hover {
             color: #a9bdd3;
 			background-color: #f5fcff;
-		    cursor: pointer;
         }
     }
 
@@ -45,4 +69,11 @@
             font-size: 1.2em;
         }
     }
+
+    @media (hover: hover) {
+		button:hover {
+            color: #a9bdd3;
+			background-color: #f5fcff;
+		}
+	}
 </style>

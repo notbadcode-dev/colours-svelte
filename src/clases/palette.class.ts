@@ -1,11 +1,17 @@
 export class Palette {
     constructor(
-        public id: number,
-        public number: number,
-        public title: string,
+        public _id: string,
         public colours: string[],
-        public likes: number,
-        public since: Date,
-        public tags: string[]
-    ) {}
+        public title?: string,
+        public likes?: number,
+        public tags?: string[],
+        public isFamous?: boolean,
+        public isPendingApproval?: boolean,
+        public createdAt?: Date,
+        public updatedAt?: Date,
+
+        public liked?: boolean 
+    ) {
+        liked = false;
+    }
 }
