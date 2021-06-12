@@ -68,7 +68,11 @@
         }
 
         const paletteIndex = _collection.findIndex(palette => palette._id === palettes[0]._id);
-        _collection[paletteIndex] = palettes[0];
+        const newCollection = _collection;
+        _collection[paletteIndex].likes = palettes[0].likes;
+        for (let index = 0, _collectionLength = _collection.length; index < _collectionLength; index++) {
+            _collection[index].colours = newCollection[index].colours.reverse();  
+        }
     }
 
     function isLikedPalette(_id) {

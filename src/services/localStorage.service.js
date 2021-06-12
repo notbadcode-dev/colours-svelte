@@ -14,11 +14,11 @@ export function setWithExpiry(key, value, ttl) {
 }
 
 export function get(key) {
-	return localStorage.getItem(key);
+	return localStorage.getItem(key); 
 }
 
 export function getWithExpiry(key) {
-	const itemStr = localStorage.getItem(key)
+	const itemStr = localStorage.getItem(key);
 	if (!itemStr) {
 		return null
 	}

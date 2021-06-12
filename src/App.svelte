@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { beforeUpdate } from 'svelte';
 
 	import CollectionComponent from './components/Collection.svelte';
 	import PaletteComponent from './components/Palette.svelte';
@@ -13,6 +13,7 @@
 	import * as appAuthService from './services/app-auth.http.service';
 	import * as localStorageService from './services/localStorage.service';
 	import * as paletteService from './services/pallete.http.service'
+	import * as globalService from './common/app-global.service';
 
 	import type { Palette } from './clases/palette.class';
 	import { EViews } from './common/general.enum';
@@ -29,19 +30,22 @@
 	$: _collection = collection;
 	$:_reloadCollection = false;
 
-    onMount(async () => {
+	beforeUpdate(async () => {
 		if (localStorageService.getWithExpiry('token') === null) {
 			const res = await appAuthService.getToken();
-			localStorageService.setWithExpiry('token', res.token, 86400);
+
+			if (res !== null) {
+				localStorageService.setWithExpiry('token', res.token, 86400);
+			}
 		}
-    })
+	});
 
 	function addPalette(paletteToSave: any): void {
 		try {
 			if (paletteToSave.colours.length !== new Set(paletteToSave.colours).size) {
-				globalThis.pushToast('Duplicate colors on palette');
+				globalThis.pushWarningToast('Duplicate colors on palette');
 			} else if (collection.filter(palette => palette.colours === paletteToSave.colours).length > 1) {
-				globalThis.pushToast('Already exists palette with same title or colours');
+				globalThis.pushWarningToast('Already exists palette with same title or colours');
 			} else {
 				if (paletteToSave._id === null) {
 					createPalette(paletteToSave);
@@ -50,23 +54,30 @@
 				}
 			}
 		} catch (error) {
-			globalThis.pushToast(error);
+			globalThis.pushErrorToast(error);
 		}
 	}
 
 	function createPalette(paletteToCreate): void {
+        let response: Response;
+        let itsOk: boolean;
+
 		try {
 			paletteService.createPalette(paletteToCreate).then((response: Response) => {
-				if (response.data) {
-					collection = [...collection, paletteToCreate];
-					switchView(EViews.generalCollection);
-					
+				if (response) {
+					itsOk = globalService.getResponse(response);
 
-					globalThis.pushToast(response.messages[1]);
+					if (itsOk) {
+						collection = [...collection, paletteToCreate];
+
+						setTimeout(() => {
+							switchView(EViews.viewPalette);
+						}, 200);
+					}
 				}
 			});
 		} catch (error) {
-			globalThis.pushToast(error);
+			globalThis.pushErrorToast(error);
 		}
 	}
 
@@ -79,10 +90,10 @@
 			}
 
 			collection = [...collection];
-			globalThis.pushToast('Update palette succesfully');
+			globalThis.pushSuccessToast('Update palette succesfully');
 			switchView(EViews.generalCollection);
 		} catch (error) {
-			globalThis.pushToast(error);
+			globalThis.pushErrorToast(error);
 		}
 	}
 
@@ -90,9 +101,9 @@
 		try {
 			collection = [ ...collection.filter(palette => palette.title !== paletteToRemove.title)];
 			switchView(EViews.generalCollection);
-			globalThis.pushToast('Delete palette succesfully');
+			globalThis.pushSuccessToast('Delete palette succesfully');
 		} catch (error) {
-			globalThis.pushToast(error);
+			globalThis.pushErrorToast(error);
 		}
 	}
 	
@@ -104,7 +115,7 @@
 			}
 			switchView(EViews.createPalette)
 		} catch (error) {
-			globalThis.pushToast(error);
+			globalThis.pushErrorToast(error);
 		}
 	}
 
@@ -113,7 +124,7 @@
 			activePalette = paletteToDetail;
 			switchView(EViews.viewPalette);
 		} catch (error) {
-			globalThis.pushToast(error);
+			globalThis.pushErrorToast(error);
 		}
 	}
 
@@ -139,6 +150,12 @@
 	}
 
 </script>
+
+<svelte:head>
+	<title>Colours</title>
+	<html lang="en"/>
+	<link rel="icon" type="image/svg" href="/favicon.svg"/>
+</svelte:head>
 
 <div class="header">
 	<div class="menu">

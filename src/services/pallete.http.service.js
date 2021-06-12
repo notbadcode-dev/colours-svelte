@@ -1,5 +1,4 @@
 import HttpService from './http.service'
-import { ResponseHelper } from '../clases/reponse.class'
 
 const paletteUrl = 'app-colours/palettes';
 

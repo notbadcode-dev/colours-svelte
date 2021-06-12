@@ -14,3 +14,12 @@ export enum EPaletteActions {
     create = 1,
     update = 2,
 }
+
+export enum ToastTypeClass {
+    default = '',
+    info = 'info',
+    success = 'success',
+    warning = 'warning',
+    error = 'error',
+    critical = 'critical'
+}

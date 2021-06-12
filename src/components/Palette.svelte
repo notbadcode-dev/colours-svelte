@@ -31,7 +31,7 @@
 			props: { clipboard },
 		});
 		app.$destroy();
-        globalThis.pushToast('Copy colour on clipboard');
+        globalThis.pushSuccessToast('Copy colour on clipboard');
 	}
 
     function generateRanndomColours(numberColours: number): string[] {

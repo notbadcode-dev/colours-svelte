@@ -14,8 +14,8 @@
 <div class="btn-container">
     <TooltipComponent tip={ tooltip } bottom
         beforeWidth=120
-        beforeBottom=36
-        afterBottom=36>
+        beforeBottom=12
+        afterBottom=12>
         <div class="tooltip" on:click|preventDefault={() => { document.getElementById(title + faIcon).click() }}></div>
     </TooltipComponent>
 
